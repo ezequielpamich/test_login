@@ -84,15 +84,10 @@ router.get('/login/:utoken?', (req, res) => {
     //'GET /login/:token';
     const { utoken } = req.params;
 
-    if (!utoken) {
-
-        //return res.status(404).send({ err: 'Token nulo' });
-        return res.status(401).json({err: tokenNull})
-    }
 
     // Verificar si el token es menor a 10 caracteres
     if (utoken.length < 10) {
-        return res.status(401).json({ err: 'tokenInvalido' });
+        return res.status(401).json({ mensaje: 'tokenInvalido' });
     }
 
     // Verificar si el token es válido en tiempo

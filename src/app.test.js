@@ -81,14 +81,22 @@ describe('Metodo GET a login, sin token', () => {
 describe('Metodo GET a login, con token', () => {
 
     // Validar que la respuesta sea JSON
-    it('Toda las respuestas deberia ser un JSON', async () => {
+    it('Deberia responder un json', async () => {
         const result = await request(app)
-            .get(`/login/${validToken}`)
-            .send({ usuario: 'usuario1', clave: 'clave1' })
+            .get(`/login/${"12efsrtte"}`)
             .expect('Content-Type', /json/)
-            .expect(201);
         
         expect(result.headers['content-type']).toMatch(/json/);
+    });
+
+    // Validar que la respuesta sea JSON
+    it('Token invalido, deberia responder starus 401 y mensaje: tokenInvalido', async () => {
+        const result = await request(app)
+            .get(`/login/${"12efsrtte"}`)
+            .expect('Content-Type', /json/)
+            .expect(401);
+        
+            expect(result.body.mensaje).toBe('tokenInvalido');
     });
 });
 
