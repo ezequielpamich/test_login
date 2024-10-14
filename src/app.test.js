@@ -1,38 +1,45 @@
 const request = require('supertest');
-
 const app = require('./app.js');
+
+const { isTokenValidTime } = require('./data/basedatos')
+jest.mock('./data/basedatos');
+
+
+beforeEach(() => {
+    isTokenValidTime.mockReset()
+})
+
+
 
 
 describe('POST /login', () => {
 
     // Validar que la respuesta sea JSON
-    it('Toda respuesta deberia ser un JSON', async () => {
+    test('Toda respuesta deberia ser un JSON', async () => {
         const result = await request(app)
             .post('/login')
-            .send({ usuario: 'usuario1', clave: 'clave1' })
-            .expect('Content-Type', /json/)
-            .expect(201);
+            .send()
         
         expect(result.headers['content-type']).toMatch(/json/);
     });
 
 
     // Prueba principal: Login exitoso
-    it('Se envia un clave y usuario verdadero, debería devolver un JSON con el mensaje "ok" y un token Valido', async () => {
+    test('Se envia un clave y usuario verdadero, debería devolver un JSON con el mensaje "ok" y un token Valido', async () => {
         const result = await request(app)
             .post('/login')
-            .send({ usuario: 'usuario1', clave: 'clave1' })
+            .send({ usuario: '', clave: '' })
             .expect('Content-Type', /json/)
             .expect(201);
         
-        expect(result.body.message).toBe("ok");
+        expect(result.body.login).toBe("ok");
         expect(result.body.token).toBeDefined();
         expect(typeof result.body.token).toBe("string");
     });
 
 
     // Validar que usuario y clave son obligatorios
-    it('debería devolver un error 400 si no se proporciona usuario o clave', async () => {
+    test('debería devolver un error 400 si no se proporciona usuario o clave', async () => {
         const result = await request(app)
             .post('/login')
             .send({ usuario: '', clave: '' })
@@ -43,7 +50,7 @@ describe('POST /login', () => {
     });
 
     // Validar si el usuario no existe
-    it('debería devolver un error 404 si el usuario no existe', async () => {
+    test('debería devolver un error 404 si el usuario no existe', async () => {
         const result = await request(app)
             .post('/login')
             .send({ usuario: 'usuario_no_existe', clave: 'clave1' })
@@ -54,7 +61,7 @@ describe('POST /login', () => {
     });
 
     // Validar si la clave es incorrecta
-    it('debería devolver un error 401 si la clave es incorrecta', async () => {
+    test('debería devolver un error 401 si la clave es incorrecta', async () => {
         const result = await request(app)
             .post('/login')
             .send({ usuario: 'usuario1', clave: 'clave_incorrecta' })
@@ -68,7 +75,7 @@ describe('POST /login', () => {
 //'GET /login/:token';
 describe('Metodo GET a login, sin token', () => {
 
-    it('Sin token, deberia devolver status200 login: err ', async () => {
+    test('Sin token, deberia devolver status200 login: err ', async () => {
         const result = await request(app)
             .get('/login') // Llamada sin token
             .expect(200);
@@ -81,15 +88,35 @@ describe('Metodo GET a login, sin token', () => {
 describe('Metodo GET a login, con token', () => {
 
     // Validar que la respuesta sea JSON
-    it('Toda las respuestas deberia ser un JSON', async () => {
+    test('Deberia responder un json', async () => {
         const result = await request(app)
-            .get(`/login/${validToken}`)
-            .send({ usuario: 'usuario1', clave: 'clave1' })
+            .get(`/login/${"12efsrtte"}`)
             .expect('Content-Type', /json/)
-            .expect(201);
         
         expect(result.headers['content-type']).toMatch(/json/);
     });
+
+    // Validar que la respuesta sea JSON
+    test('Token invalido, deberia responder starus 401 y mensaje: tokenInvalido', async () => {
+        const result = await request(app)
+            .get(`/login/${"12efsrtte"}`)
+            .expect('Content-Type', /json/)
+            .expect(401);
+        
+            expect(result.body.mensaje).toBe('tokenInvalido');
+    });
+
+    test('Se envia un token tiempo expirado, deberia devolver', async () => {
+        isTokenValidTime.mockReturnValue(false);
+        const result = await request(app)
+            .get(`/login/${"12efsrtterrrrraa"}`)
+            .expect('Content-Type', /json/)
+            .expect(402);
+        
+            expect(result.body.mensaje).toBe('expirado');
+    });
+
+
 });
 
 /*
