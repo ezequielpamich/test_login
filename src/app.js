@@ -3,7 +3,7 @@ const app = express();
 app.use(express.json());
 
 //Base datos
-const { verificaUsuario, createTokenWithTimestamp, guardarToken, isTokenValidTime } = require('./data/basedatos');
+const { verificaUsuario, createTokenWithTimestamp, guardarToken, isTokenValidTime, buscarToken } = require('./data/basedatos');
 
 
 const router = express.Router();
@@ -23,12 +23,12 @@ router.post('/login', (req, res) => {
     // Verificar si el usuario existe
     const user = verificaUsuario(usuario);
     if (!user) {
-        return res.status(404).json({ login: 'Clave o Usuario incorrecto' });
+        return res.status(404).json({ err: 'Clave o Usuario incorrecto' });
     }
  
     // Verificar si la clave es correcta
     if (user.clave !== clave) {
-        return res.status(401).json({ login: 'Clave o Usuario incorrecto' });
+        return res.status(401).json({ err: 'Clave incorrecta' });
     }
 
 
@@ -67,9 +67,8 @@ router.get('/login/:utoken?', (req, res) => {
         return res.status(402).send({ mensaje: 'expirado' });
     }
 
-
     // Buscar el token
-    const foundToken = tokens.find(t => t.token === utoken);
+    const foundToken = buscarToken(utoken);
 
     if (!foundToken) {
         return res.status(403).send({ message: 'Token no encontrado.' });  

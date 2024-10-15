@@ -42,3 +42,6 @@ module.exports.guardarToken = (nuevoToken, userId) => {
     return tokens.push(nuevo);
 }
 
+module.exports.buscarToken = (utoken) => {
+    return tokens.find(t => t.token === utoken)
+}

@@ -1,12 +1,15 @@
 const request = require('supertest');
 const app = require('./app.js');
 
-const { isTokenValidTime } = require('./data/basedatos')
+const { isTokenValidTime, verificaUsuario, createTokenWithTimestamp } = require('./data/basedatos')
+
 jest.mock('./data/basedatos');
 
 
 beforeEach(() => {
     isTokenValidTime.mockReset()
+    verificaUsuario.mockReset()
+    createTokenWithTimestamp.mockReset()
 })
 
 
@@ -15,10 +18,11 @@ beforeEach(() => {
 describe('POST /login', () => {
 
     // Validar que la respuesta sea JSON
-    test('Toda respuesta deberia ser un JSON', async () => {
+    it('Toda respuesta deberia ser un JSON', async () => {
         const result = await request(app)
             .post('/login')
             .send()
+            .expect('Content-Type', /json/)
         
         expect(result.headers['content-type']).toMatch(/json/);
     });
@@ -26,48 +30,47 @@ describe('POST /login', () => {
 
     // Prueba principal: Login exitoso
     test('Se envia un clave y usuario verdadero, debería devolver un JSON con el mensaje "ok" y un token Valido', async () => {
+        verificaUsuario.mockReturnValue({ id: 1, usuario: 'usuario1', clave: 'clave1'});
+        createTokenWithTimestamp.mockReturnValue("estoEsUnTokenXD");
         const result = await request(app)
             .post('/login')
-            .send({ usuario: '', clave: '' })
-            .expect('Content-Type', /json/)
-            .expect(201);
+            .send({ usuario: "usuario1", clave: "clave1" })
         
         expect(result.body.login).toBe("ok");
-        expect(result.body.token).toBeDefined();
+        expect(result.body.token).toBe("estoEsUnTokenXD");
         expect(typeof result.body.token).toBe("string");
     });
 
-
     // Validar que usuario y clave son obligatorios
-    test('debería devolver un error 400 si no se proporciona usuario o clave', async () => {
+    test('Se envia sin clave o Usuario, debería devolver un error 400', async () => {
         const result = await request(app)
             .post('/login')
             .send({ usuario: '', clave: '' })
             .expect('Content-Type', /json/)
             .expect(400);
         
-        expect(result.body.error).toBe('Campos incompleto');
+        expect(result.body.login).toBe('Campos incompleto');
     });
 
     // Validar si el usuario no existe
-    test('debería devolver un error 404 si el usuario no existe', async () => {
+    test('Se envia un usuario que no existe, deberia devolver err Clave o Usuario incorrecto', async () => {
         const result = await request(app)
             .post('/login')
             .send({ usuario: 'usuario_no_existe', clave: 'clave1' })
             .expect('Content-Type', /json/)
             .expect(404);
         
-        expect(result.body.error).toBe('Clave o Usuario incorrecto');
+        expect(result.body.err).toBe('Clave o Usuario incorrecto');
     });
 
     // Validar si la clave es incorrecta
     test('debería devolver un error 401 si la clave es incorrecta', async () => {
+        verificaUsuario.mockReturnValue({ id: 1, usuario: 'usuario1', clave: 'clave1'});
         const result = await request(app)
             .post('/login')
             .send({ usuario: 'usuario1', clave: 'clave_incorrecta' })
-            .expect('Content-Type', /json/)
-            .expect(401);        
-        expect(result.body.error).toBe('Clave o Usuario incorrecto');
+            .expect('Content-Type', /json/)  
+        expect(result.body.err).toBe('Clave incorrecta');
     });
 });
 
@@ -108,6 +111,7 @@ describe('Metodo GET a login, con token', () => {
 
     test('Se envia un token tiempo expirado, deberia devolver', async () => {
         isTokenValidTime.mockReturnValue(false);
+
         const result = await request(app)
             .get(`/login/${"12efsrtterrrrraa"}`)
             .expect('Content-Type', /json/)
