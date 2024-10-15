@@ -1,16 +1,40 @@
+const { Pool } = require('pg');
 const crypto = require('crypto');
-const users = [
-    { id: 1, usuario: 'usuario1', clave: 'clave1', estado: true },
-    { id: 2, usuario: 'usuario2', clave: 'clave2', estado: true },
-    { id: 3, usuario: 'usuario3', clave: 'clave3', estado: true },
-    { id: 4, usuario: 'usuario4', clave: 'clave4', estado: true },
-];
+require('dotenv').config(); // Cargar las variables de entorno
 
-const tokens = [
-    { token: 'token1_value', user_id: 1, estado: true },
-    { token: 'token2_value', user_id: 2, estado: true },
-    { token: 'b149930ebd42f2fce2d1f12d43ab0a43_1727658401142', user_id: 3, estado: true },
-];
+// Crear una conexión con el pool de PostgreSQL
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false, // Requerido para la conexión SSL con Neon
+    }
+});
+
+// Función genérica para ejecutar consultas
+module.exports.query = (text, params) => {
+    return pool.query(text, params);
+};
+
+// Función para verificar si un usuario existe en la base de datos
+module.exports.verificaUsuario = async (usuario) => {
+    const result = await pool.query('SELECT * FROM users WHERE usuario = $1', [usuario]);
+    return result.rows[0]; // Devuelve el primer usuario encontrado o undefined
+};
+
+// Función para guardar un token en la tabla tokens
+module.exports.guardarToken = async (nuevoToken, userId) => {
+    const result = await pool.query(
+        'INSERT INTO tokens (token, user_id, estado) VALUES ($1, $2, $3) RETURNING *', 
+        [nuevoToken, userId, true]
+    );
+    return result.rows[0]; // Devuelve el token recién creado
+};
+
+// Función para buscar un token en la base de datos
+module.exports.buscarToken = async (utoken) => {
+    const result = await pool.query('SELECT * FROM tokens WHERE token = $1', [utoken]);
+    return result.rows[0]; // Devuelve el token encontrado o undefined
+};
 
 // Función para crear un token que incluye la marca de tiempo
 module.exports.createTokenWithTimestamp = () => {
@@ -31,17 +55,3 @@ module.exports.isTokenValidTime = (token) => {
 
     return timeDiff < 60; // True si paso menos de 60 minutos
 };
-
-
-module.exports.verificaUsuario = (usuario) => {
-    return users.find(u => u.usuario === usuario)
-}
-
-module.exports.guardarToken = (nuevoToken, userId) => {
-    const nuevo = {token: nuevoToken , user_id: userId, estado: true };
-    return tokens.push(nuevo);
-}
-
-module.exports.buscarToken = (utoken) => {
-    return tokens.find(t => t.token === utoken)
-}
